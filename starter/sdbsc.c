@@ -62,11 +62,13 @@ int open_db(char *dbFile, bool should_truncate)
  */
 int get_student(int fd, int id, student_t *s)
 {
+    //Calculate byte offset, set pointer to offset and check value
     off_t offset = (id - 1) * STUDENT_RECORD_SIZE;
     if (lseek(fd, offset, SEEK_SET) == -1) {
         printf(M_ERR_DB_READ);
         return ERR_DB_FILE;
     }
+    //Read student record, if no data is read then clear the record
     size_t bytes_read = read(fd, s, STUDENT_RECORD_SIZE);
     if (bytes_read == 0) {
         memset(s, 0, STUDENT_RECORD_SIZE);
@@ -74,7 +76,7 @@ int get_student(int fd, int id, student_t *s)
         printf(M_ERR_DB_READ);
         return ERR_DB_FILE;
     }
-
+    //Check if the student is deleted or empty
     if (s->id == DELETED_STUDENT_ID || s->id == 0) {
         printf(M_STD_NOT_FND_MSG, id);
         return SRCH_NOT_FOUND;
@@ -110,6 +112,7 @@ int get_student(int fd, int id, student_t *s)
 int add_student(int fd, int id, char *fname, char *lname, int gpa)
 {
     student_t student;
+    //Check range, byte offset value and student record data size
     if (validate_range(id, gpa) != NO_ERROR) {
         printf(M_ERR_STD_RNG);
         return ERR_DB_OP;
@@ -131,6 +134,7 @@ int add_student(int fd, int id, char *fname, char *lname, int gpa)
         printf(M_ERR_DB_ADD_DUP, id);
         return ERR_DB_OP;
     }
+    //Copy student data into the record
     student.id = id;
     strncpy(student.fname, fname, sizeof(student.fname) - 1);
     student.fname[sizeof(student.fname) - 1] = '\0';
@@ -183,6 +187,7 @@ int del_student(int fd, int id)
     if (lseek(fd, offset, SEEK_SET) == -1) {
         return ERR_DB_FILE;
     }
+    //Overwrite current student record with empty record.
     student_t empty_student = {0};
     if (write(fd, &empty_student, STUDENT_RECORD_SIZE) != STUDENT_RECORD_SIZE) {
         return ERR_DB_FILE;
@@ -217,9 +222,11 @@ int del_student(int fd, int id)
  */
 int count_db_records(int fd)
 {
+    //Set pointer to beginning and read records
+    //Increment for each valid record.
     student_t student;
     int count = 0;
-    lseek(fd, 0, SEEK_SET); // Ensure we start from the beginning of the file
+    lseek(fd, 0, SEEK_SET);
     while (read(fd, &student, STUDENT_RECORD_SIZE) == STUDENT_RECORD_SIZE) {
         if (student.id != DELETED_STUDENT_ID && student.id != 0) {
             count++;
@@ -268,9 +275,11 @@ int count_db_records(int fd)
  */
 int print_db(int fd)
 {
+    //Iterate over each record, check if valid and if the header has
+    //been printed. Print the record header and tick boolean header_printed.
     student_t student;
     bool header_printed = false;
-    lseek(fd, 0, SEEK_SET); // Ensure we start from the beginning of the file
+    lseek(fd, 0, SEEK_SET);
     while (read(fd, &student, STUDENT_RECORD_SIZE) == STUDENT_RECORD_SIZE) {
         if (student.id != DELETED_STUDENT_ID && student.id != 0) {
             if (!header_printed) {
